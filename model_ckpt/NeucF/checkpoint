@@ -1,0 +1,2 @@
+model_checkpoint_path: "NeuCF_on_cpu_macmini2.ckpt"
+all_model_checkpoint_paths: "NeuCF_on_cpu_macmini2.ckpt"
