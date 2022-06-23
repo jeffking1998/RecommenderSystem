@@ -36,15 +36,15 @@ import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-import datasets.DataLoader as DL
+import utils.DataLoader as DL
 import utils.Evaluation as EVA
-from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import ElasticNet, SGDRegressor
 from tqdm import trange
 
 import pandas as pd 
 
 class SLIM:
-    def __init__(self, num_users, num_items, size_topN, reg_alpha, l1_ratio, positive=True,fit_intercept=False, copy_X=False, max_iter=1000, tol=1e-4):
+    def __init__(self, num_users, num_items, size_topN, model, reg_alpha, l1_ratio, positive=True,fit_intercept=False, copy_X=False, max_iter=1000, tol=1e-4):
         self.UI_matrix = np.zeros(shape=(num_users, num_items))   ## matrix of U-I interaction
         self.W = np.zeros(shape=(num_items, num_items))           ## matrix of weight 
         self.topN_list = []
@@ -56,17 +56,28 @@ class SLIM:
         self.copy_X = copy_X
         self.max_iter = max_iter
         self.tol = tol
-        self.model = ElasticNet(
-            alpha=self.reg_alpha, 
-            l1_ratio=self.l1_ratio,
-            positive=self.positive,            ## for SLIM, this holds True
-            fit_intercept=self.fit_intercept,  ## for SLIM, ~~no data is prepared to be centered~~ we have no bias
-            copy_X=self.copy_X, 
-            max_iter=self.max_iter,
-            tol=self.tol,
-            # precompute=True, 
-            selection='random',
-            )
+        if model == 'slim':
+            self.model = ElasticNet(
+                alpha=self.reg_alpha, 
+                l1_ratio=self.l1_ratio,
+                positive=self.positive,            ## for SLIM, this holds True
+                fit_intercept=self.fit_intercept,  ## for SLIM, ~~no data is prepared to be centered~~ we have no bias
+                copy_X=self.copy_X, 
+                max_iter=self.max_iter,
+                tol=self.tol,
+                # precompute=True, 
+                selection='random',
+                )
+        elif model == 'sgd':
+            self.model = SGDRegressor(
+                penalty='elasticnet',
+                fit_intercept=self.fit_intercept,
+                alpha=self.reg_alpha, 
+                l1_ratio=self.l1_ratio,
+                )
+        else:
+            pass 
+
 
     def fit(self, X):
         self.UI_matrix = X 
@@ -101,135 +112,28 @@ class SLIM:
 if __name__ == "__main__":
 
     ""
+    ml100k_folder = r'/Users/jeff/OneDrive/Code_bank/Learn/RS_dataset/MovieLens/ml-100k/'
 
-    # ml100k_folder = r'/Users/jeff/OneDrive/Code_bank/Learn/RS_dataset/MovieLens/ml-100k/'
+    data_record, trainingset, testset, num_users, num_items = DL.data_loader_ml100k(
+        data_dir=ml100k_folder, 
+        ratio=0.8, 
+        value_form='implicit',
+        )
 
-    # data_record, trainingset, testset, num_users, num_items = DL.data_loader_ml100k(
-    #     data_dir=ml100k_folder, 
-    #     ratio=0.8, 
-    #     value_form='implicit',
-    #     )
+    X = DL.convert2matrix(trainingset, num_users, num_items) 
+    GT = DL.test_set2ground_truth(testset, num_users)
 
-    # X = DL.convert2matrix(trainingset, num_users, num_items) 
-    # GT = DL.test_set2ground_truth(testset, num_users)
-
-    # l1_reg, l2_reg = 0.3, 0.1 
-
-    # slim = SLIM(
-    #     num_users=num_users, 
-    #     num_items=num_items, 
-    #     size_topN=50, 
-    #     reg_alpha=0.2,#l1_reg + l2_reg,
-    #     l1_ratio=0.02,#l1_reg / (l1_reg + l2_reg),
-    #     max_iter=1000,
-    #     tol= 0.1, #1e-4,
-    #     )
-
-    # slim.fit(X)
-    # slim.topN_Recom()
-    # all_topN = slim.get_topN_recom()
-
-    # N = [5, 10, 50]
-    # for n in N:
-    #     EVA.full_evaluate_At_N(GT=GT, AllTopN=np.array(all_topN), N = n)
-
-#----------------------------
-    """
-    read ml-10m 
-    """
-
-
-    ml10m_folder = r'/Users/jeff/OneDrive/Code_bank/Learn/RS_dataset/MovieLens/ml-10m/'
-    ml10m = ml10m_folder + 'ratings.dat'
-    data = pd.read_csv(
-        ml10m, 
-        sep='::', 
-        engine='python', 
-        header=None, 
-        names=['user_id', 'item_id', 'rating', 'time_stamp'],
-        )   
-
-    num_users = data['user_id'].unique().shape[0]
-    num_items = data['item_id'].unique().shape[0]
-
-
-    ## unique item
-    unique_item_idx = data['item_id'].sort_values().unique()
-    ori2newidx = {}
-    idx = 0
-    for uidx in unique_item_idx:
-        ori2newidx[uidx] = idx 
-        idx += 1
-    data['item_idx'] = data['item_id'].map(ori2newidx)
-
-    # ## user_idx -= 1
-    unique_user_idx = data['user_id'].sort_values().unique()
-    ori2newidx = {}
-    idx = 0
-    for uidx in unique_user_idx:
-        ori2newidx[uidx] = idx 
-        idx += 1
-    data['user_idx'] = data['user_id'].map(ori2newidx)
-
-
-    grouped = data.groupby('user_id')
-    last_time = grouped['time_stamp'].transform('max')
-
-    training_flag = data['time_stamp'] != last_time
-    training_flag = training_flag.to_numpy()
-
-    training_set = data[training_flag]
-    test_set     = data[~training_flag]
-
-    training_set = training_set[['user_idx', 'item_idx', 'rating']].to_numpy()
-    test_set     = test_set[['user_idx', 'item_idx', 'rating']].to_numpy()
-
-    training_set = training_set.astype('int')
-    test_set     = test_set.astype('int')
-
-
-    """
-    ml10m_inter = ml10m_folder + 'ml-10m.inter' 
-
-
-    data = pd.read_csv(ml10m_inter, sep='\t')   
-
-    num_users = data['user_id:token'].unique().shape[0]
-    num_items = data['item_id:token'].unique().shape[0]
-
-    grouped = data.groupby('user_id:token')
-    last_time = grouped['timestamp:float'].transform('max')
-
-    training_flag = data['timestamp:float'] != last_time
-    training_flag = training_flag.to_numpy()
-
-    training_set = data[training_flag]
-    test_set     = data[~training_flag]
-
-    training_set = training_set[['user_id:token', 'item_id:token', 'rating:float']].to_numpy()
-    test_set     = test_set[['user_id:token', 'item_id:token', 'rating:float']].to_numpy()
-
-    training_set = training_set.astype('int')
-    test_set     = test_set.astype('int')
-    """
-
-    X = DL.convert2matrix(training_set, num_users, num_items) 
-    X = np.sign(X) ## convert into implicit feedback 
-    GT = DL.test_set2ground_truth(test_set, num_users)
-
-    # ml10m_folder
-    with open(ml10m_folder + 'implicit_UI_matrix.npy', 'wb') as f:
-        np.save(f, X)
-    
+    l1_reg, l2_reg = 0.3, 0.1 
 
     slim = SLIM(
         num_users=num_users, 
         num_items=num_items, 
+        model='sgd',
         size_topN=50, 
-        reg_alpha=0.2,  #l1_reg + l2_reg,
-        l1_ratio=0.02,  #l1_reg / (l1_reg + l2_reg),
+        reg_alpha=0.2,#l1_reg + l2_reg,
+        l1_ratio=0.02,#l1_reg / (l1_reg + l2_reg),
         max_iter=1000,
-        tol= 0.1,  #1e-4,
+        tol= 0.1, #1e-4,
         )
 
     slim.fit(X)
@@ -239,6 +143,88 @@ if __name__ == "__main__":
     N = [5, 10, 50]
     for n in N:
         EVA.full_evaluate_At_N(GT=GT, AllTopN=np.array(all_topN), N = n)
+
+# #----------------------------
+#     """
+#     read ml-10m 
+#     """
+
+
+#     ml10m_folder = r'/Users/jeff/OneDrive/Code_bank/Learn/RS_dataset/MovieLens/ml-10m/'
+#     ml10m = ml10m_folder + 'ratings.dat'
+#     data = pd.read_csv(
+#         ml10m, 
+#         sep='::', 
+#         engine='python', 
+#         header=None, 
+#         names=['user_id', 'item_id', 'rating', 'time_stamp'],
+#         )   
+
+#     num_users = data['user_id'].unique().shape[0]
+#     num_items = data['item_id'].unique().shape[0]
+
+
+#     ## unique item
+#     unique_item_idx = data['item_id'].sort_values().unique()
+#     ori2newidx = {}
+#     idx = 0
+#     for uidx in unique_item_idx:
+#         ori2newidx[uidx] = idx 
+#         idx += 1
+#     data['item_idx'] = data['item_id'].map(ori2newidx)
+
+#     # ## user_idx -= 1
+#     unique_user_idx = data['user_id'].sort_values().unique()
+#     ori2newidx = {}
+#     idx = 0
+#     for uidx in unique_user_idx:
+#         ori2newidx[uidx] = idx 
+#         idx += 1
+#     data['user_idx'] = data['user_id'].map(ori2newidx)
+
+
+#     grouped = data.groupby('user_id')
+#     last_time = grouped['time_stamp'].transform('max')
+
+#     training_flag = data['time_stamp'] != last_time
+#     training_flag = training_flag.to_numpy()
+
+#     training_set = data[training_flag]
+#     test_set     = data[~training_flag]
+
+#     training_set = training_set[['user_idx', 'item_idx', 'rating']].to_numpy()
+#     test_set     = test_set[['user_idx', 'item_idx', 'rating']].to_numpy()
+
+#     training_set = training_set.astype('int')
+#     test_set     = test_set.astype('int')
+
+
+#     X = DL.convert2matrix(training_set, num_users, num_items) 
+#     X = np.sign(X) ## convert into implicit feedback 
+#     GT = DL.test_set2ground_truth(test_set, num_users)
+
+#     # ml10m_folder
+#     # with open(ml10m_folder + 'implicit_UI_matrix.npy', 'wb') as f:
+#     #     np.save(f, X)
+    
+
+#     slim = SLIM(
+#         num_users=num_users, 
+#         num_items=num_items, 
+#         size_topN=50, 
+#         reg_alpha=0.2,  #l1_reg + l2_reg,
+#         l1_ratio=0.02,  #l1_reg / (l1_reg + l2_reg),
+#         max_iter=1000,
+#         tol= 0.1,  #1e-4,
+#         )
+
+#     slim.fit(X)
+#     slim.topN_Recom()
+#     all_topN = slim.get_topN_recom()
+
+#     N = [5, 10, 50]
+#     for n in N:
+#         EVA.full_evaluate_At_N(GT=GT, AllTopN=np.array(all_topN), N = n)
 
 
 
