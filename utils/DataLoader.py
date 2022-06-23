@@ -45,7 +45,7 @@ class Evaluator:
         print(self._basic_info())
         print(self._data_distribution())
 
-def data_loader_ml100k(data_dir, ratio=0.8, value_form='remain'):
+def data_loader_ml100k(data_dir, ratio=0.8, value_form='remain', split_mode='random'):
     def read_data_ml100k(data_dir, value_form='remain'):
         names = ['user_id', 'item_id', 'rating', 'timestamp']
         data = pd.read_csv(os.path.join(data_dir, 'u.data'), '\t', names=names,
@@ -75,6 +75,14 @@ def data_loader_ml100k(data_dir, ratio=0.8, value_form='remain'):
             train_data = [item for item in train_list if item not in test_data]
             train_data = pd.DataFrame(train_data)
             test_data = pd.DataFrame(test_data)
+        elif split_mode == 'random-one-out':
+            flag = [True for _ in range(data.shape[0])]
+            grouped = data.groupby('user_id')
+            for u, idxs in grouped.groups.items():
+                test_idx = np.random.choice(idxs) 
+                flag[test_idx] = False
+            neg_flag = [not x for x in flag]
+            train_data, test_data = data[flag], data[neg_flag]
         else:
             mask = [True if x == 1 else False for x in np.random.uniform(
                 0, 1, (len(data))) < 1 - test_ratio]
@@ -83,7 +91,7 @@ def data_loader_ml100k(data_dir, ratio=0.8, value_form='remain'):
         return train_data, test_data
     data, num_users, num_items = read_data_ml100k(data_dir=data_dir, value_form=value_form)
     train_data, test_data = split_data_ml100k(
-        data, num_users, num_items, split_mode='random', test_ratio=1-ratio)
+        data, num_users, num_items, split_mode=split_mode, test_ratio=1-ratio)
     sparsity = 1 - len(data) / (num_users * num_items)
     print(f'number of users: {num_users}, number of items: {num_items}')
     print(f'matrix sparsity: {sparsity:f}')
@@ -229,10 +237,10 @@ def convert2invert_file(tri_table, n_user, n_item, main_key=0):
         ]
     """
     if main_key == 0:
-        length = n_item_set
+        length = n_item
         sub_key = 1
     else:
-        length = n_user_set
+        length = n_user
         sub_key = 0 
 
     invert_file = [

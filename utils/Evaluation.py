@@ -148,25 +148,27 @@ def AUC(GT, top_N):
 This two evaluate whole dataset at once.
 """
 
-def hit_rate(all_GT, all_topN):
+def hit_rate(all_GT, all_topN, K=10):
     size_user = len(all_GT)
     assert size_user == len(all_topN)
     hit = 0
+    assert len(all_GT[0]) == 1
     for gt, topN in zip(all_GT, all_topN):
-        if gt in topN:
+        if gt[0] in topN[:K]:
             hit += 1
     return hit / size_user 
 
 
-def ARHR(all_GT, all_topN):
+def ARHR(all_GT, all_topN, K=10):
     size_user = len(all_GT)
     pos_numerator = 0
     size_n = len(all_topN[0])
-    assert size_n == size_user
+    # assert size_n == size_user
     for gt, topN in zip(all_GT, all_topN):
-        if gt in topN:
-            for i in range(size_n):
-                if topN[i] == gt:
+        topN = topN[:K]
+        if gt[0] in topN:
+            for i in range(K):
+                if topN[i] == gt[0]:
                     pos_numerator += 1 / (1 + i)
     return pos_numerator / size_user 
 

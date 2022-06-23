@@ -1,14 +1,14 @@
 import numpy as np 
 from numpy import linalg as LA
 
-# from scipy.spatial import distance ## another choice for calculating distances 
+from scipy.spatial import distance ## another choice for calculating distances 
 
 ## va and vb definately share at least one common item. 
 ## which is guarrented by the data structure `invert file`.
 
 def cosine(va, vb):
-    return np.dot(va, vb) / (LA.norm(va) * LA.norm(vb))
-    # return 1 - distance.cosine(va, vb)
+    # return np.dot(va, vb) / (LA.norm(va) * LA.norm(vb))
+    return 1 - distance.cosine(va, vb)
 
 def pearson(va, vb):
     va_centered = va - np.mean(va) 
