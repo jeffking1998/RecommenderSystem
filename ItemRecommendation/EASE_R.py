@@ -14,9 +14,10 @@ are no need do negative sampling.
 import numpy as np 
 
 import sys 
+import os 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-import datasets.DataLoader as DL 
+import utils.DataLoader as DL 
 
 import utils.Evaluation as EVA
 
@@ -127,7 +128,7 @@ if __name__ == "__main__":
 
 #------------------------- Fit the model -----------------------#
 
-    rase = RASE(size_topN=10)
+    rase = RASE(size_topN=50)
     rase.fit(X=X, reg_lambda=400)
     # rase.show_train_rmse()
     # weight = rase.get_W()
