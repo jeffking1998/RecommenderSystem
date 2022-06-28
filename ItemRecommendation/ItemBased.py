@@ -64,6 +64,27 @@ class ItemBasedRegression:
             hat_ui = self.global_mean
         
         return hat_ui, hat_ui - r 
+        
+    def batch_predict(self, pairs, batch_size, verbose):
+        """Computes predictions for a given set of user-item pairs.
+
+        Args:
+        pairs: A pair of lists (users, items) of the same length.
+        batch_size: unused.
+        verbose: unused.
+
+        Returns:
+        predictions: A list of the same length as users and items, such that
+        predictions[i] is the models prediction for (users[i], items[i]).
+        """
+        del batch_size, verbose
+        num_examples = len(pairs[0])
+        assert num_examples == len(pairs[1])
+        predictions = np.empty(num_examples)
+        for i in range(num_examples):
+            predictions[i], _ = self.predict([pairs[0][i], pairs[1][i], 0])
+        return predictions
+
 
     def multi_predict(self, subset_of_test):
         hats, errors = [], [] 

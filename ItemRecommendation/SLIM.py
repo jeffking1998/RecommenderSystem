@@ -87,6 +87,32 @@ class SLIM:
             self.model.fit(self.UI_matrix, self.UI_matrix[:, item_idx].copy())
             self.W[:,item_idx] = self.model.coef_
 
+    def predict(self, a_test_item):
+        u, i, r = a_test_item
+        hat_r = self.UI_matrix[u,:] @ self.W[:,i]
+        return hat_r, hat_r - r 
+
+    def batch_predict(self, pairs, batch_size, verbose):
+        """Computes predictions for a given set of user-item pairs.
+
+        Args:
+        pairs: A pair of lists (users, items) of the same length.
+        batch_size: unused.
+        verbose: unused.
+
+        Returns:
+        predictions: A list of the same length as users and items, such that
+        predictions[i] is the models prediction for (users[i], items[i]).
+        """
+        del batch_size, verbose
+        num_examples = len(pairs[0])
+        assert num_examples == len(pairs[1])
+        predictions = np.empty(num_examples)
+        for i in range(num_examples):
+            predictions[i], _ = self.predict([pairs[0][i], pairs[1][i], 0])
+        return predictions
+
+
     def _single_recom_topN(self, u, topK=10):
         size_item = self.UI_matrix.shape[1]
         items_purchased = np.where(self.UI_matrix[u] > 0)[0]
@@ -123,7 +149,7 @@ if __name__ == "__main__":
     X = DL.convert2matrix(trainingset, num_users, num_items) 
     GT = DL.test_set2ground_truth(testset, num_users)
 
-    l1_reg, l2_reg = 0.3, 0.1 
+    # l1_reg, l2_reg = 0.3, 0.1 
 
     slim = SLIM(
         num_users=num_users, 

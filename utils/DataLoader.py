@@ -2,6 +2,7 @@ import random
 import numpy as np 
 import pandas as pd
 import os 
+import scipy.sparse as sp
 
 class Evaluator:
     def __init__(self):
@@ -216,12 +217,27 @@ def test_set2ground_truth(testset, num_users):
         ground_truth[u].append(i)
     return ground_truth 
 
+def test_set2ground_truth2(testset, num_users):
+    ground_truth = [
+        [] for _ in range(num_users)
+    ]
+    for test in testset:
+        u, i = test
+        ground_truth[u].append(i)
+    return ground_truth 
 
-def convert2matrix(tri_table, n_users, n_items):
-    matrix = np.zeros((n_users, n_items), dtype=np.float64) 
+
+def convert2matrix(tri_table, n_users, n_items, matrix_form='numpy', value_form='remain'):
+    if matrix_form == 'sparse':
+        matrix = sp.dok_matrix((n_user, n_items), dtype=np.float32)
+    else:
+        matrix = np.zeros((n_users, n_items), dtype=np.float32) 
     for t in tri_table:
         u, i, r = t 
-        matrix[u,i] = r ## not 1, now has rating scores
+        if value_form == 'remain':
+            matrix[u,i] = r 
+        else:
+            matrix[u,i] = 1.0 #r ## not 1, now has rating scores
     return matrix 
 
 def convert2invert_file(tri_table, n_user, n_item, main_key=0):

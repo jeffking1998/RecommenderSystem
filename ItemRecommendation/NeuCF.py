@@ -49,72 +49,72 @@ class of Python:
     - in __init__ can call function that implemented later.
     - instances in __init__ can be called out of class. 
 """
-# class Dataset(object):
-#     '''
-#     classdocs
-#     '''
+class Dataset(object):
+    '''
+    classdocs
+    '''
 
-#     def __init__(self, path):
-#         '''
-#         Constructor
-#         '''
-#         self.trainMatrix = self.load_rating_file_as_matrix(path + ".train.rating")
-#         self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
-#         self.testNegatives = self.load_negative_file(path + ".test.negative")
-#         assert len(self.testRatings) == len(self.testNegatives)
+    def __init__(self, path):
+        '''
+        Constructor
+        '''
+        self.trainMatrix = self.load_rating_file_as_matrix(path + ".train.rating")
+        self.testRatings = self.load_rating_file_as_list(path + ".test.rating")
+        self.testNegatives = self.load_negative_file(path + ".test.negative")
+        assert len(self.testRatings) == len(self.testNegatives)
         
-#         self.num_users, self.num_items = self.trainMatrix.shape
+        self.num_users, self.num_items = self.trainMatrix.shape
         
-#     def load_rating_file_as_list(self, filename):
-#         ratingList = []
-#         with open(filename, "r") as f:
-#             line = f.readline()
-#             while line != None and line != "":
-#                 arr = line.split("\t")
-#                 user, item = int(arr[0]), int(arr[1])
-#                 ratingList.append([user, item])
-#                 line = f.readline()
-#         return ratingList
+    def load_rating_file_as_list(self, filename):
+        ratingList = []
+        with open(filename, "r") as f:
+            line = f.readline()
+            while line != None and line != "":
+                arr = line.split("\t")
+                user, item = int(arr[0]), int(arr[1])
+                ratingList.append([user, item])
+                line = f.readline()
+        return ratingList
     
-#     def load_negative_file(self, filename):
-#         negativeList = []
-#         with open(filename, "r") as f:
-#             line = f.readline()
-#             while line != None and line != "":
-#                 arr = line.split("\t")
-#                 negatives = []
-#                 for x in arr[1: ]:
-#                     negatives.append(int(x))
-#                 negativeList.append(negatives)
-#                 line = f.readline()
-#         return negativeList
+    def load_negative_file(self, filename):
+        negativeList = []
+        with open(filename, "r") as f:
+            line = f.readline()
+            while line != None and line != "":
+                arr = line.split("\t")
+                negatives = []
+                for x in arr[1: ]:
+                    negatives.append(int(x))
+                negativeList.append(negatives)
+                line = f.readline()
+        return negativeList
     
-#     def load_rating_file_as_matrix(self, filename):
-#         '''
-#         Read .rating file and Return dok matrix.
-#         The first line of .rating file is: num_users\t num_items
-#         '''
-#         # Get number of users and items
-#         num_users, num_items = 0, 0
-#         with open(filename, "r") as f:
-#             line = f.readline()
-#             while line != None and line != "":
-#                 arr = line.split("\t")
-#                 u, i = int(arr[0]), int(arr[1])
-#                 num_users = max(num_users, u)
-#                 num_items = max(num_items, i)
-#                 line = f.readline()
-#         # Construct matrix
-#         mat = sp.dok_matrix((num_users+1, num_items+1), dtype=np.float32)
-#         with open(filename, "r") as f:
-#             line = f.readline()
-#             while line != None and line != "":
-#                 arr = line.split("\t")
-#                 user, item, rating = int(arr[0]), int(arr[1]), float(arr[2])
-#                 if (rating > 0):
-#                     mat[user, item] = 1.0
-#                 line = f.readline()    
-#         return mat
+    def load_rating_file_as_matrix(self, filename):
+        '''
+        Read .rating file and Return dok matrix.
+        The first line of .rating file is: num_users\t num_items
+        '''
+        # Get number of users and items
+        num_users, num_items = 0, 0
+        with open(filename, "r") as f:
+            line = f.readline()
+            while line != None and line != "":
+                arr = line.split("\t")
+                u, i = int(arr[0]), int(arr[1])
+                num_users = max(num_users, u)
+                num_items = max(num_items, i)
+                line = f.readline()
+        # Construct matrix
+        mat = sp.dok_matrix((num_users+1, num_items+1), dtype=np.float32)
+        with open(filename, "r") as f:
+            line = f.readline()
+            while line != None and line != "":
+                arr = line.split("\t")
+                user, item, rating = int(arr[0]), int(arr[1]), float(arr[2])
+                if (rating > 0):
+                    mat[user, item] = 1.0
+                line = f.readline()    
+        return mat
 
 
 
@@ -233,7 +233,7 @@ def evaluate_model(model, UI_matrix, GT, szN=50):
         EVA.full_evaluate_At_N(GT=GT, AllTopN=np.array(all_topN), N = n)
 
 
-def get_train_instances(train, num_negatives):
+# def get_train_instances(train, num_negatives):
     # 1 VS num_neg :: positive VS negative
     user_input, item_input, labels = [],[],[]
     num_users = train.shape[0]
@@ -257,6 +257,28 @@ def get_train_instances(train, num_negatives):
             labels.append(0)
     return user_input, item_input, labels
 
+def get_train_instances(train, num_negatives):
+    """
+    train :: a sparse matrix 
+    """
+    user_input, item_input, labels = [],[],[]
+    num_users = train.shape[0]
+    num_items = train.shape[1]
+    for (u, i) in train.keys():
+        # positive instance
+        user_input.append(u)
+        item_input.append(i)
+        labels.append(1)
+        # negative instances
+        for t in range(num_negatives):
+            j = np.random.randint(num_items)
+            while (u, j) in train:
+                j = np.random.randint(num_items)
+            user_input.append(u)
+            item_input.append(j)
+            labels.append(0)
+    return user_input, item_input, labels
+
 
 
 
@@ -271,7 +293,7 @@ if __name__ == "__main__":
         value_form='implicit',
         )
 
-    X = DL.convert2matrix(trainingset, num_users, num_items) 
+    X = DL.convert2matrix(trainingset, num_users, num_items, matrix_form='sparse', value_form='binary') 
     GT = DL.test_set2ground_truth(testset, num_users)
 
 
@@ -290,7 +312,7 @@ if __name__ == "__main__":
 
 
 
-    user_input, item_input, labels = get_train_instances(train, num_negatives=1)        
+    user_input, item_input, labels = get_train_instances(train, num_negatives=4)        
 
 #--------------------------------------------------------
     mvlens_dir = r'/Users/jeff/OneDrive/Code_bank/Learn/RS/model_ckpt/NeucF/'
@@ -302,8 +324,8 @@ if __name__ == "__main__":
                                                     save_weights_only=True,
                                                     verbose=1)
 
-    batch_size = 2048
-    num_epochs = 40
+    batch_size = 256
+    num_epochs = 20
 
     topK = 10
     evaluation_threads = 1 
@@ -326,7 +348,3 @@ if __name__ == "__main__":
 
     evaluate_model(model, X, GT, szN=50)
 
-# 100%|██████████| 943/943 [1:19:05<00:00,  5.03s/it]mean_precision = 0.19777306468716788 
-# mean_recall = 0.12464972025383221 
-# mean_avg_precision = 0.11968747169540624   
-# mean_ndcg = 0.22888223298882227 

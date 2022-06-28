@@ -4,7 +4,7 @@ import sys
 import os 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-import datasets.DataLoader as DL 
+import utils.DataLoader as DL 
 
 from sklearn.utils.extmath import randomized_svd
 
@@ -29,14 +29,33 @@ class PureSVD:
                                       random_state = self.random_seed)
         self.U_feat = U @ np.diag(Sigma) 
         self.I_feat = QT  ## f \times |I|
-        # TODO: how to predict 
-        # TODO: P = (U @ Sigma) _OR_ (X @ Q)   
 
 
     def predict(self, a_test_item):
         u, i, r = a_test_item
         hat_r = self.U_feat[u,:] @ self.I_feat[:,i]
         return hat_r, hat_r - r 
+
+    def batch_predict(self, pairs, batch_size, verbose):
+        """Computes predictions for a given set of user-item pairs.
+
+        Args:
+        pairs: A pair of lists (users, items) of the same length.
+        batch_size: unused.
+        verbose: unused.
+
+        Returns:
+        predictions: A list of the same length as users and items, such that
+        predictions[i] is the models prediction for (users[i], items[i]).
+        """
+        del batch_size, verbose
+        num_examples = len(pairs[0])
+        assert num_examples == len(pairs[1])
+        predictions = np.empty(num_examples)
+        for i in range(num_examples):
+            predictions[i], _ = self.predict([pairs[0][i], pairs[1][i], 0])
+        return predictions
+
 
     def _single_recom_topN(self, u, topK=10):
         size_item = self.UI_matrix.shape[1]
@@ -57,6 +76,16 @@ class PureSVD:
     def get_topN_recom(self):
         return self.topN_list
 
+
+class SparsePureSVD(PureSVD):
+    def __init__(self):
+        pass 
+
+    def fit(self):
+        pass 
+
+    def predict(self):
+        pass
 
 
 
@@ -115,8 +144,7 @@ if __name__ == "__main__":
         value_form= 'remain',
         )    
 
-    X = DL.convert2matrix(trainingset, num_users, num_items) 
-    # X = np.sign(X)  ## convert into implicit feedback
+    X = DL.convert2matrix(trainingset, num_users, num_items, matrix_form='numpy', value_form='remain') 
     # in original paper, using ratings to train 
 
 
@@ -132,7 +160,7 @@ if __name__ == "__main__":
     GT = DL.test_set2ground_truth(testset, num_users)
 
 
-    svd = PureSVD(size_user=num_users, size_item=num_items, latent_factors=50, size_topN=50,random_seed=0)
+    svd = PureSVD(size_user=num_users, size_item=num_items, latent_factors=10, size_topN=50,random_seed=0)
     svd.fit(X)
     svd.topN_Recom()
     all_topN = svd.get_topN_recom()
