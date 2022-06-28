@@ -34,6 +34,7 @@ Logistic以及特征交叉的算法：Poly2, FM, FFM 等都需要引入side info
 >     1.  git add .
 >     2.  git commit -m "info" 
 >     3.  git push -u origin main 
+>     git reset --soft HEAD^ 当push失败的时候
 
 
 I have moved my focus on top-N recommendation task right now. NO ~~predict ratings task~~
